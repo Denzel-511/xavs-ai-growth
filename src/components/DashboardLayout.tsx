@@ -12,6 +12,7 @@ import {
   BarChart3,
   Settings,
   LogOut,
+  Share2,
 } from "lucide-react";
 
 interface DashboardLayoutProps {
@@ -58,6 +59,7 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
   const navItems = [
     { path: "/dashboard", icon: LayoutDashboard, label: "Overview" },
     { path: "/dashboard/conversations", icon: MessageSquare, label: "Conversations" },
+    { path: "/dashboard/share", icon: Share2, label: "Share Link" },
     { path: "/dashboard/knowledge", icon: BookOpen, label: "Knowledge Base" },
     { path: "/dashboard/customize", icon: Palette, label: "Customize" },
     { path: "/dashboard/analytics", icon: BarChart3, label: "Analytics" },
