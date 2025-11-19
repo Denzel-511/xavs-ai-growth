@@ -11,6 +11,9 @@ import Step2BrandVoice from "./pages/onboarding/Step2BrandVoice";
 import Step3QuickSetup from "./pages/onboarding/Step3QuickSetup";
 import Step4Embed from "./pages/onboarding/Step4Embed";
 import Overview from "./pages/dashboard/Overview";
+import Conversations from "./pages/dashboard/Conversations";
+import ShareLink from "./pages/dashboard/ShareLink";
+import ChatWidget from "./pages/ChatWidget";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -30,6 +33,9 @@ const App = () => (
           <Route path="/onboarding/step3" element={<Step3QuickSetup />} />
           <Route path="/onboarding/step4" element={<Step4Embed />} />
           <Route path="/dashboard" element={<Overview />} />
+          <Route path="/dashboard/conversations" element={<Conversations />} />
+          <Route path="/dashboard/share" element={<ShareLink />} />
+          <Route path="/chat/:businessId" element={<ChatWidget />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
