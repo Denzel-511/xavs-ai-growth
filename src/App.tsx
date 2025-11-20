@@ -14,6 +14,7 @@ import Overview from "./pages/dashboard/Overview";
 import Conversations from "./pages/dashboard/Conversations";
 import ShareLink from "./pages/dashboard/ShareLink";
 import KnowledgeBase from "./pages/dashboard/KnowledgeBase";
+import Customize from "./pages/dashboard/Customize";
 import ChatWidget from "./pages/ChatWidget";
 import NotFound from "./pages/NotFound";
 
@@ -37,6 +38,7 @@ const App = () => (
           <Route path="/dashboard/conversations" element={<Conversations />} />
           <Route path="/dashboard/share" element={<ShareLink />} />
           <Route path="/dashboard/knowledge" element={<KnowledgeBase />} />
+          <Route path="/dashboard/customize" element={<Customize />} />
           <Route path="/chat/:businessId" element={<ChatWidget />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />

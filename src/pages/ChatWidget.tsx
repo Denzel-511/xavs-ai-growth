@@ -55,9 +55,9 @@ const ChatWidget = () => {
   };
 
   const handleSend = async () => {
-    if (!input.trim() || !business) return;
+    if (!input.trim() || !business || isLoading) return;
 
-    const userMessage: Message = { role: "user", content: input };
+    const userMessage: Message = { role: "user", content: input.trim() };
     setMessages((prev) => [...prev, userMessage]);
     setInput("");
     setIsLoading(true);
@@ -73,7 +73,10 @@ const ChatWidget = () => {
         },
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error("Chat function error:", error);
+        throw error;
+      }
 
       const assistantMessage: Message = {
         role: "assistant",
@@ -95,11 +98,30 @@ const ChatWidget = () => {
         }, 1000);
       }
     } catch (error: any) {
+      console.error("Error in chat:", error);
+      
+      let errorMessage = "Sorry, I'm having trouble connecting. Please try again.";
+      
+      if (error.message?.includes("Rate limit") || error.status === 429) {
+        errorMessage = "I'm getting a lot of requests right now. Please wait a moment and try again.";
+      } else if (error.message?.includes("quota") || error.status === 402) {
+        errorMessage = "Our AI service is temporarily unavailable. Please try again later.";
+      }
+      
       toast({
-        title: "Error",
-        description: error.message || "Failed to send message",
+        title: "Connection Error",
+        description: errorMessage,
         variant: "destructive",
       });
+      
+      // Add error message to chat
+      setMessages((prev) => [
+        ...prev,
+        {
+          role: "assistant",
+          content: errorMessage,
+        },
+      ]);
     } finally {
       setIsLoading(false);
     }

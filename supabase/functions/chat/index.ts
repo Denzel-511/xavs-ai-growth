@@ -14,22 +14,32 @@ serve(async (req) => {
   try {
     const { messages, businessId, visitorId, conversationId } = await req.json();
     
+    console.log(`[Chat] Request received - Business: ${businessId}, Conversation: ${conversationId}`);
+    
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
     
-    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
+    if (!LOVABLE_API_KEY) {
+      console.error("[Chat] LOVABLE_API_KEY not configured");
+      throw new Error("AI service not configured");
+    }
     
     const supabase = createClient(supabaseUrl!, supabaseServiceKey!);
 
     // Get business info and knowledge base
-    const { data: business } = await supabase
+    const { data: business, error: businessError } = await supabase
       .from("businesses")
       .select("*, knowledge_base(*)")
       .eq("id", businessId)
       .single();
 
-    if (!business) throw new Error("Business not found");
+    if (businessError || !business) {
+      console.error("[Chat] Business not found:", businessError);
+      throw new Error("Business not found");
+    }
+
+    console.log(`[Chat] Business loaded: ${business.name}, Knowledge items: ${business.knowledge_base?.length || 0}`);
 
     // Build context from knowledge base
     let knowledgeContext = "";
@@ -40,6 +50,7 @@ serve(async (req) => {
     }
 
     const systemPrompt = `You are an AI assistant for ${business.name}. ${business.tone ? `Use a ${business.tone} tone.` : ''}
+You can communicate in multiple languages - respond in the same language the user writes in.
 Business website: ${business.website || 'Not provided'}
 Industry: ${business.industry || 'Not specified'}
 
@@ -47,11 +58,14 @@ Knowledge Base:
 ${knowledgeContext || 'No specific information provided yet.'}
 
 Your role is to:
-1. Answer visitor questions professionally and helpfully
-2. Provide information about the business
+1. Answer visitor questions professionally and helpfully in their language
+2. Provide accurate information about the business
 3. Be concise but friendly
 4. If you don't know something, be honest and offer to have someone contact them
-5. Encourage visitors to leave their contact info for follow-up`;
+5. Encourage visitors to leave their contact info for follow-up
+6. Detect the language used and respond in the same language`;
+
+    console.log("[Chat] Calling Lovable AI with model: google/gemini-2.5-flash");
 
     // Call Lovable AI
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
@@ -66,22 +80,38 @@ Your role is to:
           { role: "system", content: systemPrompt },
           ...messages,
         ],
-        temperature: 0.7,
       }),
     });
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error("AI gateway error:", response.status, errorText);
-      throw new Error(`AI gateway error: ${response.status}`);
+      console.error("[Chat] AI gateway error:", response.status, errorText);
+      
+      if (response.status === 429) {
+        return new Response(
+          JSON.stringify({ error: "Rate limit exceeded. Please try again shortly." }),
+          { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      
+      if (response.status === 402) {
+        return new Response(
+          JSON.stringify({ error: "AI service quota exceeded. Please contact support." }),
+          { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      
+      throw new Error(`AI service error: ${response.status}`);
     }
 
     const data = await response.json();
     const aiMessage = data.choices[0].message.content;
+    
+    console.log(`[Chat] AI response received, length: ${aiMessage.length} chars`);
 
-    // Save message to conversation
+    // Save messages to conversation
     if (conversationId) {
-      await supabase.from("messages").insert([
+      const { error: messagesError } = await supabase.from("messages").insert([
         {
           conversation_id: conversationId,
           role: "user",
@@ -93,6 +123,12 @@ Your role is to:
           content: aiMessage,
         },
       ]);
+      
+      if (messagesError) {
+        console.error("[Chat] Error saving messages:", messagesError);
+      } else {
+        console.log("[Chat] Messages saved successfully");
+      }
     }
 
     return new Response(
@@ -102,9 +138,9 @@ Your role is to:
       }
     );
   } catch (error: any) {
-    console.error("Error in chat function:", error);
+    console.error("[Chat] Error:", error.message);
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ error: error.message || "An unexpected error occurred" }),
       {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
